@@ -8,7 +8,7 @@ metadata:
   labels:
     app.kubernetes.io/name: universalmessaging
     app.kubernetes.io/instance: umserver
-    app.kubernetes.io/version: "11.1"
+    app.kubernetes.io/version: "12.1"
 ---
 apiVersion: v1
 kind: Service
@@ -17,7 +17,7 @@ metadata:
   labels:
     app.kubernetes.io/name: universalmessaging
     app.kubernetes.io/instance: umserver
-    app.kubernetes.io/version: "11.1"
+    app.kubernetes.io/version: "12.1"
 spec:
   selector:
     statefulset.kubernetes.io/pod-name: umserver-0
@@ -26,10 +26,6 @@ spec:
       targetPort: 9000
       protocol: TCP
       name: nsp
-    - port: 80
-      targetPort: 9001
-      protocol: TCP
-      name: http
     - port: 9200
       targetPort: 9200
       protocol: TCP
@@ -42,7 +38,7 @@ metadata:
   labels:
     app.kubernetes.io/name: universalmessaging
     app.kubernetes.io/instance: umserver
-    app.kubernetes.io/version: "11.1"
+    app.kubernetes.io/version: "12.1"
 spec:
   replicas: 1
   serviceName: umserver
@@ -57,29 +53,36 @@ spec:
         app.kubernetes.io/instance: umserver
     spec:
       imagePullSecrets:
+      # kubectl create secret docker-registry wm-regcred --docker-server=ibmwebmethods.azurecr.io --docker-username=... --docker-password=...
         - name: wm-regcred
-      serviceAccountName: umserver-sa      
+      serviceAccountName: umserver-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: umserver   
-          image: "ibmwebmethods.azurecr.io/universalmessaging-server:11.1"
+        - name: umserver
+          image: "ibmwebmethods.azurecr.io/universalmessaging-server:12.1"
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: nsp
               containerPort: 9000
-              protocol: TCP
-            - name: http
-              containerPort: 9001
               protocol: TCP
             - name: metrics
               containerPort: 9200
               protocol: TCP              
           volumeMounts:
           - name: data
-            mountPath: /opt/softwareag/UniversalMessaging/server/umserver/data
+            mountPath: /opt/webmethods/UniversalMessaging/server/umserver/data
           - name: logs
-            mountPath: /opt/softwareag/UniversalMessaging/server/umserver/logs
+            mountPath: /opt/webmethods/UniversalMessaging/server/umserver/logs
           - name: configuration
-            mountPath: /opt/softwareag/common/conf    
+            mountPath: /opt/webmethods/common/conf    
           env:
           - name: REALM_NAME
             valueFrom:
@@ -134,7 +137,7 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
-          storage: 1Gi
+          storage: 10Gi
   - metadata:
       name: logs
     spec:
